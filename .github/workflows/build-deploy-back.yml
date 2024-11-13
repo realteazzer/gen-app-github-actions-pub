@@ -1,0 +1,69 @@
+name: build and deploy back
+
+# Controls when the workflow will run
+on: workflow_dispatch
+  # Allows you to run this workflow manually from the Actions tab
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  # This workflow contains a single job called "build"
+  build-deploy-back:
+    # The type of runner that the job will run on 
+    runs-on: ubuntu-latest
+
+    # Steps represent a sequence of tasks that will be executed as part of the job
+    steps:
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+      - name: Checkout genealogy app
+        uses: actions/checkout@v4
+        with:
+              repository: 'AnastasiaTer-Stepanova/genealogy-visualizer'
+              ref: 'develop'
+              path: 'gen-app'
+              token: ${{ secrets.REGISTRY_TOKEN }}
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+              path: 'deploy-files'
+      - name: Login to GitHub Registry
+        uses: docker/login-action@v1 
+        with:
+          registry: ghcr.io
+          username: "realteazzer"
+          password: ${{ secrets.REGISTRY_TOKEN }}
+      - name: build-push back image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: /home/runner/work/gen-app-deploy/gen-app-deploy/deploy-files/Dockerfile-back
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/genealogy-visualizer-back:latest 
+          build-args: |
+            POSTGRES_USER=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+            POSTGRES_HOST=postgres
+            POSTGRES_PORT=${{ secrets.POSTGRES_PORT }}
+            POSTGRES_NAME=${{ secrets.POSTGRES_NAME }}
+            KAFKA_ENABLED=false
+      - name: copy docker compose via ssh password
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT }}
+          overwrite: true
+          source: "./deploy-files/docker-compose-app-GA.yaml"
+          target: ./gen-app/
+          strip_components: 2   
+      - name: "Run deploy on server"
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USERNAME }}
+          password: ${{ secrets.SERVER_PASSWORD }}
+          port: ${{ secrets.SERVER_PORT }}
+          script: |
+              export CR_PAT=${{ secrets.REGISTRY_TOKEN }}
+              echo $CR_PAT | docker login ghcr.io -u USERNAME --password-stdin
+              docker compose -f ./gen-app/docker-compose-app-GA.yaml pull
+              docker compose -f ./gen-app/docker-compose-app-GA.yaml up back -d
