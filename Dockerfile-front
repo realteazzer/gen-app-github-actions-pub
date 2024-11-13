@@ -1,0 +1,12 @@
+FROM node AS build
+WORKDIR /app
+COPY /gen-app/ui . 
+RUN npm install
+RUN npm run build
+
+FROM node AS run
+WORKDIR /app
+COPY --from=build /app/dist /app/dist
+RUN npm install serve -g
+EXPOSE 3000
+CMD ["serve", "dist"]
