@@ -12,6 +12,7 @@
  - Dockerfile-back	
  - Dockerfile-front
  - docker-compose-app-GA.yaml
+ - docker-compose-db.yaml - docker-compose для запуска psql и redis
 
 **Бэк** -  в докерфайле собирается JAR и запускается (в контейнер передаются параметры базы данных из пайплайна), сохраняется образ в гитхабе, на VPS копируется docker compose который забирает образ из гита и запускает его
 

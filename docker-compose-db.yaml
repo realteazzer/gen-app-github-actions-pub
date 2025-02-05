@@ -1,0 +1,38 @@
+version: "3.9"
+services:
+  postgres:
+    container_name: postgres
+    image: postgres:16.2
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+    env_file:
+      - db.env
+    networks:
+      - gen-app-network
+    
+  redis:
+    container_name: redis
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    volumes:
+      - "/var/lib/redis:/var/lib/redis"
+    restart: unless-stopped
+    env_file:
+      - db.env
+    networks:
+      - gen-app-network
+
+volumes:
+  db-data:
+networks:
+  gen-app-network:
