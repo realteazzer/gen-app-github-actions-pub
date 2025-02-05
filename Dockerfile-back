@@ -4,14 +4,15 @@ ARG POSTGRES_HOST
 ARG POSTGRES_PORT
 ARG POSTGRES_NAME
 ARG KAFKA_ENABLED
+
 FROM gradle:8.7-jdk21 AS build
-COPY /gen-app/ /home/gradle/genealogy-app/
 WORKDIR /home/gradle/genealogy-app/
-RUN ls -la .
-RUN chown root gradlew
-RUN chmod +x ./gradlew
-RUN chmod +x ./gradle/wrapper/gradle-wrapper.jar
-RUN ./gradlew :back:controller:bootJar
+
+COPY /gen-app/ .
+
+RUN chown root gradlew \
+    && chmod +x ./gradlew \
+    && ./gradlew :back:controller:bootJar
 
 FROM openjdk:21-jdk-slim AS run
 ARG POSTGRES_USER
@@ -20,14 +21,15 @@ ARG POSTGRES_HOST
 ARG POSTGRES_PORT
 ARG POSTGRES_NAME
 ARG KAFKA_ENABLED
-ENV POSTGRES_USER=$POSTGRES_USER
-ENV POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-ENV POSTGRES_HOST=$POSTGRES_HOST
-ENV POSTGRES_PORT=$POSTGRES_PORT
-ENV POSTGRES_NAME=$POSTGRES_NAME
-ENV KAFKA_ENABLED=$KAFKA_ENABLED
-RUN adduser --system --group app-user
-RUN mkdir /app
+
+ENV POSTGRES_USER=${POSTGRES_USER} \
+    POSTGRES_PASSWORD=${POSTGRES_PASSWORD} \
+    POSTGRES_HOST=${POSTGRES_HOST} \
+    POSTGRES_PORT=${POSTGRES_PORT} \
+    POSTGRES_NAME=${POSTGRES_NAME} \
+    KAFKA_ENABLED=${KAFKA_ENABLED}
+
+RUN adduser --system --group app-user && mkdir /app
 COPY --from=build /home/gradle/genealogy-app/back/controller/build/libs/controller.jar /app/
 EXPOSE 8080
 USER app-user
